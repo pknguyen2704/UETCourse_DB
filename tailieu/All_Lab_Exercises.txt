@@ -1,0 +1,261 @@
+LAB2: CREATE, ALTER, DROP
+LAB3: SELECT, WHERE, DISTINCT, LIMIT
+LAB4: IN, BETWEEN, LIKE, AS, ORDER BY, UNION
+LAB5: SUBSTRING, CONCAT, REPLACE, IF, LAST_INSERT_ID, DATEDIFF, ADDDATE, EXTRACT
+LAB6: SUM, AVG, MIN, MAX, COUNT, GROUP BY, HAVING
+
+________________________
+
+/** Lab 2 */
+// Cau 1
+CREATE DATABASE My_Classicmodels;
+use My_Classicmodels;
+
+CREATE TABLE productlines(
+    productLine VARCHAR(50) NOT NULL,
+    textDescription VARCHAR(4000),
+    htmlDescription MEDIUMTEXT,
+    image MEDIUMBLOB,
+    PRIMARY KEY(productLine)
+);
+
+CREATE TABLE products(
+    productCode VARCHAR(15) NOT NULL,
+    productName VARCHAR(70) NOT NULL,
+    productLine VARCHAR(50) NOT NULL,
+    productScale VARCHAR(10) NOT NULL,
+    productVendor VARCHAR(50) NOT NULL,
+    productDescription TEXT NOT NULL,
+    quantityInStock SMALLINT(6) NOT NULL,
+    buyPrice DOUBLE NOT NULL,
+    PRIMARY KEY(productCode)
+);
+
+CREATE TABLE orders(
+    orderNumber INT(11) NOT NULL AUTO_INCREMENT,
+    orderDate DATETIME NOT NULL,
+    requiredDate DATETIME NOT NULL,
+    shippedDate DATETIME,
+    status VARCHAR(15) NOT NULL,
+    comments TEXT,
+    customerNumber INT(11) NOT NULL,
+    PRIMARY KEY(orderNumber)
+);
+
+CREATE TABLE orderdetails(
+    orderNumber INT(11) NOT NULL AUTO_INCREMENT,
+    productCode VARCHAR(15) NOT NULL,
+    quantityOrdered INT(11) NOT NULL,
+    priceEach DOUBLE NOT NULL,
+    orderLineNumber SMALLINT(6) NOT NULL,
+    PRIMARY KEY(orderNumber, productCode)
+);
+
+// Cau 2
+ALTER TABLE orderdetails ADD CONSTRAINT fk_orders_details FOREIGN KEY (orderNumber) REFERENCES orders (orderNumber) ON UPDATE CASCADE;
+ALTER TABLE orderdetails ADD CONSTRAINT fk_details_products FOREIGN KEY (productCode) REFERENCES products (productCode) ON UPDATE CASCADE;
+ALTER TABLE products ADD CONSTRAINT fk_products_lines FOREIGN KEY (productLine) REFERENCES productlines (productLine) ON UPDATE CASCADE;
+
+________________________
+
+/** Lab 3 */
+// Cau 1
+SELECT * FROM employees WHERE reportsTO IS NULL;
+
+// Cau 2
+SELECT DISTINCT customerNumber FROM `payments`;
+
+// Cau 3
+SELECT * FROM `orders` WHERE shippedDate = '2003-01-18';
+
+// Cau 4
+SELECT * FROM `orders` WHERE YEAR(orderDate) = 2005 AND MONTH(orderDate) = 4 AND status = "Shipped";
+
+// Cau 5
+SELECT * FROM `products` WHERE productLine = 'Classic Cars';
+
+________________________
+
+/** Lab 4 */
+// Cau 1
+SELECT * FROM `customers` WHERE city IN ('Nantes', 'Lyon');
+SELECT * FROM `customers` WHERE city = 'Nantes' OR city = 'Lyon';
+
+// Cau 2
+SELECT * FROM `orders` WHERE shippedDate BETWEEN '20030110' AND '20030310';
+SELECT * FROM `orders` WHERE shippedDate >= '20030110' AND shippedDate <= '20030310';
+
+// Cau 3
+SELECT * FROM `productlines` WHERE productLine LIKE '%CARS%';
+
+// Cau 4
+SELECT * FROM `products` ORDER BY quantityInStock DESC LIMIT 10;
+
+________________________
+
+/** Lab 5 */
+// Cau 1
+SELECT SUBSTRING(productDescription, 1, 50) AS 'Title of products' FROM `products`;
+
+// Cau 2
+SELECT CONCAT(firstName, ' ', lastName, ', ', jobTitle) AS 'employeeDescription' FROM employees;
+
+// Cau 3
+UPDATE employees SET jobTitle = REPLACE(jobTitle, 'Sales Rep', 'Sales Representative');
+
+// Cau 4
+SELECT *, DATEDIFF(requiredDate, shippedDate) AS 'daysLeft' FROM `orders` ORDER BY daysLeft DESC LIMIT 5; 
+
+// Cau 5
+SELECT * FROM `orders` WHERE YEAR(orderDate) = 2005 AND MONTH(orderDate) = 5 AND shippedDate IS NULL;
+________________________
+
+/** Lab 6 */
+// Cau 1
+SELECT city, COUNT(*) AS 'Number of customers' FROM `customers` GROUP BY city;
+
+// Cau 2
+SELECT COUNT(*) AS 'Number of orders in March 2005' FROM `orders` WHERE MONTH(orderDate) = 3 AND YEAR(orderDate) = 2005;
+
+SELECT MONTH(orderDate) AS 'Month', COUNT(*) AS 'Number of orders in 2005' FROM `orders` WHERE YEAR(orderDate) = 2005 GROUP BY Month;
+
+// Cau 3
+SELECT orderNumber, productCode, SUM(quantityOrdered*priceEach) AS 'totalPrice' FROM `orderdetails` GROUP BY orderNumber ORDER BY totalPrice DESC LIMIT 10;
+
+// Cau 4
+SELECT productLine, SUM(quantityInStock) AS 'totalQuantityInStock' FROM `products` GROUP BY productLine
+
+// Cau 5
+SELECT customerNumber, SUM(amount) AS 'totalPaid' FROM `payments` GROUP BY customerNumber ORDER BY totalPaid
+
+________________________
+
+/** Lab 8 */
+SELECT * FROM employees e INNER JOIN offices of ON e.officeCode = of.officeCode;
+
+SELECT * FROM products p LEFT JOIN orderdetails o ON p.productCode = o.productCode WHERE o.productCode IS NULL;
+
+SELECT o.orderNumber, o.orderDate, o.requiredDate, o.status, SUM(od.quantityOrdered * od.priceEach) AS 'totalValue' FROM orders o INNER JOIN orderdetails od ON o.orderNumber = od.orderNumber WHERE YEAR(o.orderDate) = 2003 AND MONTH(o.orderDate) = 3 GROUP BY o.orderNumber;
+
+SELECT pl.productLine, pl.textDescription, COUNT(p.productCode) as totalProducts 
+FROM productlines pl INNER JOIN products p ON pl.productLine = p.productLine GROUP BY pl.productLine ORDER BY totalProducts DESC;
+
+SELECT o.customerNumber, c.customerName, SUM(od.quantityOrdered * od.priceEach) 'totalValue' FROM `orders` o INNER JOIN orderdetails od ON o.orderNumber = od.orderNumber INNER JOIN customers c ON o.customerNumber = c.customerNumber GROUP BY o.customerNumber;
+
+________________________
+
+/** Lab 9 */
+// Cau 1
+[JOIN] 0.0064 seconds
+SELECT DISTINCT p.* FROM products p
+INNER JOIN orderdetails od on p.productCode = od.productCode
+INNER JOIN orders o on od.orderNumber = o.orderNumber
+WHERE YEAR(o.orderDate) = 2005 AND MONTH(o.orderDate) = 3
+                
+[SUBQUERY] 0.0066 seconds
+SELECT * FROM products p
+WHERE p.productCode IN (
+    SELECT ol.productCode FROM orderdetails ol 
+    WHERE ol.orderNumber IN (SELECT o.orderNumber FROM orders o
+                             WHERE MONTH(o.orderDate) = 3 AND YEAR(o.orderDate) = 2005)
+)
+
+// Cau 2
+SELECT * FROM orders
+WHERE YEAR(orderDate) = (SELECT YEAR(MAX(orderDate)) FROM orders) AND MONTH(orderDate) = (SELECT MONTH(MAX(orderDate)) FROM orders);
+
+// Cau 3
+[JOIN] 0.0030
+SELECT o.orderNumber, SUM(od.quantityOrdered*ol.priceEach) AS total_value
+FROM orders o 
+INNER JOIN orderdetails od
+ON o.orderNumber = od.orderNumber
+GROUP BY o.orderNumber
+
+[SUBQUERY] 0.0022
+SELECT o.orderNumber, 
+(SELECT SUM(od.quantityOrdered*od.priceEach) FROM orderdetails od WHERE o.orderNumber = od.orderNumber) 
+AS total_value
+FROM orders o GROUP BY o.orderNumber
+
+// Cau 4
+SELECT c.customerName, total_amount FROM customers c, 
+(SELECT p.customerNumber, SUM(p.amount) AS total_amount FROM payments p GROUP BY p.customerNumber) AS pay
+WHERE c.customerNumber = pay.customerNumber              
+ORDER BY pay.customerNumber ASC
+
+____ debt _____
+
+
+SELECT c.customerName,
+(SELECT SUM(od.quantityOrdered * od.priceEach)
+FROM orderdetails od
+INNER JOIN orders o ON od.orderNumber = o.orderNumber
+WHERE c.customerNumber = o.customerNumber
+GROUP BY o.customerNumber
+) totalBuy,
+(SELECT SUM(p.amount)
+FROM payments p
+WHERE p.customerNumber = c.customerNumber
+GROUP BY p.customerNumber
+) totalPay,
+(SELECT SUM(od.quantityOrdered * od.priceEach)
+FROM orderdetails od
+INNER JOIN orders o ON od.orderNumber = o.orderNumber
+WHERE c.customerNumber = o.customerNumber AND o.status = 'Cancelled'
+GROUP BY o.customerNumber
+) totalCancelled,
+(SELECT (totalBuy - totalPay - IF(totalCancelled IS NULL, 0, totalCancelled))) totalDebt
+FROM customers c
+ORDER BY totalDebt DESC;
+ 
+________________________
+
+/** Lab 10 */
+//
+
+________________________
+
+/** De giua ki - ki he 2021
+//cau 5 ki he
+SELECT productCode, SUM(quantityOrdered) AS 'total' FROM `orderdetails` GROUP BY productCode ORDER BY total DESC LIMIT 5;
+
+SELECT orderNumber, IF(comments IS NOT NULL, SUBSTR(comments, 1, 26), comments) AS first26CommentCharacters, orderDate, requiredDate, DATEDIFF(requiredDate, shippedDate) FROM `orders` WHERE YEAR(orderDate) = 2004 AND MONTH(orderDate) IN (2,4) AND DATEDIFF(requiredDate, orderDate) > 7;
+
+________________________
+
+/** De cuoi ki */
+// Cau 1
+SELECT * FROM customers c LEFT JOIN payments p ON c.customerNumber = p.customerNumber WHERE p.amount IS NULL;
+
+// Cau 2
+SELECT pl.productLine, pl.textDescription, SUM(totalInStock + totalSold) AS totalQuantity FROM productlines pl, (SELECT p.productLine, SUM(p.quantityInStock) AS totalInStock FROM products p INNER JOIN productlines pl ON p.productLine = pl.productLine GROUP BY p.productLine) AS inStock, (SELECT p.productLine, SUM(od.quantityOrdered) AS totalSold FROM orderdetails od INNER JOIN products p ON p.productCode = od.productCode INNER JOIN productlines pl ON pl.productLine = p.productLine GROUP BY p.productLine) AS sold WHERE pl.productLine = inStock.productLine AND pl.productLine = sold.productLine GROUP BY pl.productLine;
+
+SELECT tab.Line, sum(total) as totalLine FROM (SELECT p.productLine Line, (sum(od.quantityOrdered) + p.quantityInStock) as total FROM products p INNER JOIN orderdetails od ON p.productCode = od.productCode GROUP BY p.productCode) AS tab INNER JOIN `productlines` pl ON tab.Line = pl.productLine GROUP BY tab.Line HAVING totalLine > 50000 ORDER BY totalLine DESC;
+
+// Cau 3
+(SELECT pl.productLine, pl.textDescription, SUM(od.quantityOrdered * od.priceEach) totalSold, 'Worst Buy' AS note
+FROM productlines pl
+INNER JOIN products p ON pl.productLine = p.productLine
+INNER JOIN orderdetails od ON od.productCode = p.productCode
+GROUP BY pl.productLine
+ORDER BY totalSold ASC
+LIMIT 1)
+UNION
+(SELECT pl.productLine, pl.textDescription, SUM(od.quantityOrdered * od.priceEach) totalSold, 'Best Buy' AS note
+FROM productlines pl
+INNER JOIN products p ON pl.productLine = p.productLine
+INNER JOIN orderdetails od ON od.productCode = p.productCode
+GROUP BY pl.productLine
+ORDER BY totalSold DESC
+LIMIT 1)
+
+// Cau 4
+SELECT od.productCode, od.quantityOrdered AS quantitySentBack FROM orderdetails od INNER JOIN orders o ON o.orderNumber = od.orderNumber WHERE o.status = 'Cancelled' ORDER BY od.productCode ASC;
+
+SELECT od.productCode, od.quantityOrdered FROM orderdetails od WHERE od.orderNumber IN (SELECT o.orderNumber FROM `orders` o WHERE o.status = 'Cancelled') ORDER BY od.productCode ASC;
+
+// Cau 5
+CREATE TABLE offices_USA LIKE offices;
+INSERT INTO offices_USA SELECT * FROM offices of WHERE of.country = 'USA'
+
